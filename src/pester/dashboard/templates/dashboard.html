@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="{{ refresh_seconds }}">
+<title>pester Dashboard — {{ data.vault_name }}</title>
+<style>
+  :root {
+    --bg: #1a1b26; --surface: #24283b; --border: #3b4261;
+    --text: #c0caf5; --text-dim: #565f89; --text-bright: #e0e0e0;
+    --red: #f7768e; --green: #9ece6a; --yellow: #e0af68;
+    --blue: #7aa2f7; --magenta: #bb9af7; --cyan: #7dcfff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; padding: 2rem; line-height: 1.5; }
+  h1 { color: var(--text-bright); font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .generated { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .card h2 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+  .card h2.red { color: var(--red); } .card h2.green { color: var(--green); }
+  .card h2.yellow { color: var(--yellow); } .card h2.blue { color: var(--blue); }
+  .card h2.magenta { color: var(--magenta); } .card h2.cyan { color: var(--cyan); }
+  .stat { font-size: 2rem; font-weight: 700; } .stat.red { color: var(--red); }
+  .stat.green { color: var(--green); } .stat.yellow { color: var(--yellow); }
+  .stat-label { color: var(--text-dim); font-size: 0.8rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+  td { padding: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  tr.overdue td { color: var(--red); } tr.done td { color: var(--green); }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge-red { background: rgba(247,118,142,0.15); color: var(--red); }
+  .badge-green { background: rgba(158,206,106,0.15); color: var(--green); }
+  .badge-yellow { background: rgba(224,175,104,0.15); color: var(--yellow); }
+  .badge-blue { background: rgba(122,162,247,0.15); color: var(--blue); }
+  .badge-magenta { background: rgba(187,154,247,0.15); color: var(--magenta); }
+  .empty { color: var(--text-dim); font-style: italic; padding: 0.5rem; }
+  .section { margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+<h1>pester Dashboard &mdash; {{ data.vault_name }}</h1>
+<div class="generated">Generated: {{ data.generated_at.strftime('%Y-%m-%d %H:%M:%S') }} &middot; Auto-refresh: {{ refresh_seconds }}s</div>
+
+{# ── Health summary cards ── #}
+<div class="grid">
+  <div class="card">
+    <div class="stat{% if data.overdue_count > 0 %} red{% endif %}">{{ data.overdue_count }}</div>
+    <div class="stat-label">Overdue Actions</div>
+  </div>
+  <div class="card">
+    <div class="stat yellow">{{ data.total_open }}</div>
+    <div class="stat-label">Open Actions</div>
+  </div>
+  <div class="card">
+    <div class="stat{% if data.journal_stale %} yellow{% endif %}">{{ data.vault_freshness_days if data.vault_freshness_days is not none else '—' }}</div>
+    <div class="stat-label">Journal (days ago)</div>
+  </div>
+  <div class="card">
+    <div class="stat">{{ data.total_files }}</div>
+    <div class="stat-label">Total Files</div>
+  </div>
+</div>
+
+{# ── Overdue actions ── #}
+{% if data.actions_overdue %}
+<div class="card section">
+  <h2 class="red">Overdue Actions ({{ data.actions_overdue|length }})</h2>
+  <table>
+    <tr><th>Action</th><th>Owner</th><th>Due</th></tr>
+    {% for a in data.actions_overdue %}
+    <tr class="overdue">
+      <td>{{ a.title }}</td>
+      <td>{{ a.owner or '—' }}</td>
+      <td>{{ a.due or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── Open actions ── #}
+{% if data.actions_open %}
+<div class="card section">
+  <h2 class="yellow">Open Actions ({{ data.actions_open|length }})</h2>
+  <table>
+    <tr><th>Action</th><th>Owner</th><th>Due</th><th>Tags</th></tr>
+    {% for a in data.actions_open %}
+    <tr>
+      <td>{{ a.title }}</td>
+      <td>{{ a.owner or '—' }}</td>
+      <td>{{ a.due or '—' }}</td>
+      <td>{% for tag in a.tags %}<span class="badge badge-blue">{{ tag }}</span> {% endfor %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── Recently completed ── #}
+{% if data.actions_done_recently %}
+<div class="card section">
+  <h2 class="green">Recently Completed ({{ data.actions_done_recently|length }})</h2>
+  <table>
+    <tr><th>Action</th><th>Owner</th></tr>
+    {% for a in data.actions_done_recently %}
+    <tr class="done">
+      <td>{{ a.title }}</td>
+      <td>{{ a.owner or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── Active projects ── #}
+{% if data.active_projects %}
+<div class="card section">
+  <h2 class="magenta">Active Projects ({{ data.active_projects|length }})</h2>
+  <table>
+    <tr><th>Project</th><th>Priority</th><th>Deadline</th></tr>
+    {% for p in data.active_projects %}
+    <tr>
+      <td>{{ p.title }}</td>
+      <td>{% if p.priority %}<span class="badge badge-magenta">P{{ p.priority }}</span>{% else %}—{% endif %}</td>
+      <td>{{ p.due or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── Decisions needing review ── #}
+{% if data.decisions_needing_review %}
+<div class="card section">
+  <h2 class="yellow">Decisions Needing Review ({{ data.decisions_needing_review|length }})</h2>
+  <table>
+    <tr><th>Decision</th><th>Date</th></tr>
+    {% for d in data.decisions_needing_review %}
+    <tr>
+      <td>{{ d.title }}</td>
+      <td>{{ d.date or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── Recent activity ── #}
+{% if data.recent_files %}
+<div class="card section">
+  <h2 class="cyan">Recent Activity</h2>
+  <table>
+    <tr><th>Date</th><th>File</th><th>Type</th></tr>
+    {% for f in data.recent_files %}
+    <tr>
+      <td>{{ f.mtime.strftime('%Y-%m-%d') if f.mtime else '—' }}</td>
+      <td>{{ f.rel_path }}</td>
+      <td><span class="badge badge-blue">{{ f.doc_type }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── Priorities ── #}
+{% if data.priorities %}
+<div class="card section">
+  <h2 class="magenta">Priorities</h2>
+  <table>
+    <tr><th>Name</th><th>Deadline</th></tr>
+    {% for p in data.priorities %}
+    <tr>
+      <td>{{ p.name }}</td>
+      <td>{{ p.deadline or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── File counts ── #}
+<div class="card section">
+  <h2 class="cyan">Vault Structure</h2>
+  <table>
+    <tr><th>Directory</th><th>Files</th></tr>
+    {% for dir, count in data.file_counts.items()|sort %}
+    <tr>
+      <td>{{ dir }}/</td>
+      <td>{{ count }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+</body>
+</html>

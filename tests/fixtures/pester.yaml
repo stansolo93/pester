@@ -1,0 +1,39 @@
+vault:
+  name: "Test CEO Vault"
+  language: en
+  owner: "Test CEO"
+
+extraction:
+  keywords:
+    en: ["TODO", "action item", "deadline", "assigned to", "due by", "follow up"]
+
+priorities:
+  - name: "Test Priority"
+    deadline: 2026-06-01
+
+alerts:
+  burn_rate_warning: 500000
+  runway_warning: 90
+
+search:
+  model: intfloat/multilingual-e5-base
+  transcript_score_factor: 0.85
+
+health:
+  journal_stale_days: 3
+  decision_review_days: 60
+
+sync:
+  drive:
+    enabled: true
+    folders:
+      - id: "test-folder-123"
+        vault_dir: reference/drive/test
+        label: "Test Drive Folder"
+  telegram:
+    enabled: true
+    chats:
+      - id: -100123456
+        name: "Test Chat"
+        vault_dir: reference/telegram/test
+        extract_actions: false
