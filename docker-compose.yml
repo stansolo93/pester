@@ -1,0 +1,56 @@
+services:
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    env_file: .env
+    restart: unless-stopped
+
+  mcp:
+    build: .
+    command: pester --vault /vault mcp --transport streamable-http --host 0.0.0.0 --port 8100
+    expose:
+      - "8100"
+    volumes:
+      - vault-data:/vault
+      - state-data:/home/pester/.pester
+    env_file: .env
+    restart: unless-stopped
+
+  daemon:
+    build: .
+    command: pester --vault /vault daemon run
+    volumes:
+      - vault-data:/vault
+      - state-data:/home/pester/.pester
+    env_file: .env
+    restart: unless-stopped
+
+  telegram-sync:
+    build: .
+    command: pester --vault /vault sync telegram
+    volumes:
+      - vault-data:/vault
+      - state-data:/home/pester/.pester
+    env_file: .env
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    expose:
+      - "11434"
+    restart: unless-stopped
+
+volumes:
+  vault-data:
+  state-data:
+  caddy-data:
+  caddy-config:
+  ollama-data:

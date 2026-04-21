@@ -1,0 +1,100 @@
+# pester.yaml — pester Vault Configuration
+# Docs: https://github.com/stansolo93/pester
+
+vault:
+  name: "Acme"
+  language: en                    # primary content language (en, ru, etc.)
+  owner: "Your Name"
+
+# Extraction keywords for action item detection
+extraction:
+  keywords:
+    en: ["TODO", "action item", "deadline", "assigned to", "due by", "follow up"]
+    # ru: ["нужно", "сделать", "дедлайн", "задача", "до"]
+  patterns:
+    - "- [ ] @{owner} — {desc} — by {date}"
+    - "- [ ] @{owner}: {desc} (due: {date})"
+
+# Search tuning (requires: pip install pester[search])
+search:
+  model: intfloat/multilingual-e5-base
+  transcript_score_factor: 0.85
+
+# Health check thresholds
+health:
+  journal_stale_days: 3
+  decision_review_days: 60
+
+# --- Optional sections (uncomment to enable) ---
+
+# priorities:
+#   - name: "Q1 Goal"
+#     deadline: 2026-03-31
+#   - name: "Product Launch"
+#     deadline: 2026-06-01
+
+# alerts:
+#   burn_rate_warning: 500000     # monthly burn threshold
+#   runway_warning: 90            # days
+
+# sync:
+#   drive:
+#     enabled: false
+#     folders: []
+#   telegram:
+#     enabled: false
+#     chats: []
+
+# --- Daemon settings ---
+
+# daemon:
+#   pid_file: true
+
+# watcher:
+#   enabled: true
+#   debounce_seconds: 2
+#   auto_extract:
+#     enabled: true
+#     directories: [meetings]
+#   auto_index:
+#     enabled: true
+
+# scheduler:
+#   timezone: "Asia/Hong_Kong"        # null = system local
+#   morning_briefing:
+#     enabled: false
+#     time: "08:00"
+#   weekly_digest:
+#     enabled: false
+#     day_of_week: friday
+#     time: "17:00"
+#   auto_commit:
+#     enabled: false
+#     interval_minutes: 30
+
+# escalation:
+#   enabled: false
+#   default_threshold_days: 3
+#   rules:
+#     - owner: "*"
+#       priority: Must
+#       threshold_days: 2
+
+# --- LLM settings (extraction) ---
+# Supported providers: openai, anthropic
+
+# llm:
+#   provider: openai              # or "anthropic"
+#   model: gpt-5.4-mini           # Anthropic: claude-sonnet-4-6-20250217
+#   api_key_env: OPENAI_API_KEY   # Anthropic: ANTHROPIC_API_KEY
+#   temperature: 0.3
+#   max_tokens: 2048
+#   timeout_seconds: 30
+
+# --- Notifications ---
+
+# notifications:
+#   telegram:
+#     enabled: false
+#     bot_token_env: TELEGRAM_BOT_TOKEN
+#     chat_id: null

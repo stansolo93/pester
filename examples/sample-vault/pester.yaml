@@ -1,0 +1,14 @@
+vault:
+  name: "Acme Ventures"
+  language: en
+  owner: "Alex Chen"
+
+priorities:
+  - name: "Ship v1.0"
+    deadline: 2026-04-15
+  - name: "Close Series A"
+    deadline: 2026-06-01
+
+health:
+  journal_stale_days: 3
+  decision_review_days: 60

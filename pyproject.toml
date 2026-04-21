@@ -1,0 +1,70 @@
+[project]
+name = "pester"
+dynamic = ["version"]
+description = "Accountability engine for founders — stable core CLI with beta integrations for sync, bot, and remote MCP"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [{name = "Stan Soloshenko"}]
+keywords = ["founders", "startup", "knowledge-management", "rag", "semantic-search", "productivity"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "pyyaml>=6.0",
+    "click>=8.0",
+    "jinja2>=3.0",
+    "dateparser>=1.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/stansolo93/pester"
+Repository = "https://github.com/stansolo93/pester"
+Documentation = "https://github.com/stansolo93/pester#readme"
+Issues = "https://github.com/stansolo93/pester/issues"
+
+[project.optional-dependencies]
+# Stable surface: core CLI and local vault workflows.
+# Beta surfaces in 1.0.0: Drive, Telegram, daemon, bot, and remote streamable-http MCP.
+search = [
+    "chromadb>=0.4.0",
+    "onnxruntime>=1.17.0",
+    "huggingface_hub>=0.20.0",
+    "tokenizers>=0.15.0",
+    "numpy>=1.26",
+]
+mcp = ["mcp>=1.0.0"]
+drive = ["google-api-python-client", "google-auth-oauthlib"]
+telegram = ["python-telegram-bot>=20.0", "pymupdf>=1.23"]
+daemon = ["watchdog>=3.0", "schedule>=1.2", "requests>=2.28"]
+bot = ["python-telegram-bot>=20.0", "openai>=1.0", "anthropic>=0.30.0", "groq>=0.4.0"]
+llm = ["openai>=1.0", "anthropic>=0.30.0"]
+all = ["pester[search,mcp,drive,telegram,daemon,llm,bot]"]
+dev = ["pytest", "pytest-cov", "ruff", "build"]
+
+[project.scripts]
+pester = "pester.cli.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>.+)"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "search: marks tests requiring [search] extra (deselect with '-m \"not search\"')",
+    "mcp: marks tests requiring [mcp] extra (deselect with '-m \"not mcp\"')",
+    "daemon: marks tests requiring [daemon] extra (deselect with '-m \"not daemon\"')",
+    "llm: marks tests requiring [llm] extra (deselect with '-m \"not llm\"')",
+]
+addopts = "-m 'not slow and not search and not mcp and not llm'"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

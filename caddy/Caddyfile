@@ -1,0 +1,12 @@
+{$MCP_DOMAIN:mcp.example.com} {
+    @noauth not header Authorization "Bearer {$MCP_BEARER_TOKEN}"
+    respond @noauth 401
+
+    reverse_proxy mcp:8100 {
+        # FastMCP's TransportSecurityMiddleware only accepts
+        # 127.0.0.1:*, localhost:*, [::1]:* in the Host header. Rewrite it
+        # so the middleware does not return 421 for requests coming through
+        # the public domain.
+        header_up Host localhost:8100
+    }
+}
