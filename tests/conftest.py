@@ -12,6 +12,14 @@ import yaml
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def _isolated_state_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Redirect ~/.pester to tmp so tests never touch (or inherit) real state."""
+    from pester.core import state
+
+    monkeypatch.setattr(state, "_STATE_ROOT", tmp_path / ".pester")
+
+
 @pytest.fixture
 def tmp_vault(tmp_path: Path) -> Path:
     """Create a temporary vault with sample structure and files."""

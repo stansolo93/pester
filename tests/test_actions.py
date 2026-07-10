@@ -20,7 +20,7 @@ from pester.tracking.actions import (
 
 # ── Pre-existing fixture files in tmp_vault ─────────────────────────────────
 # tmp_vault copies tests/fixtures/ which includes:
-#   actions/test-action-open.md    (owner: stan, status: open,  due: 2026-06-01)
+#   actions/test-action-open.md    (owner: stan, status: open,  due: 2099-01-01, never overdue)
 #   actions/test-action-overdue.md (owner: jalba, status: open, due: 2026-03-01)
 #   actions/test-action-done.md    (owner: stan, status: done)
 #
