@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 import os
+import re
 from pathlib import Path
 
 from pester.core.vault import make_serializable
@@ -429,6 +430,7 @@ class VaultTools:
             CapacityExceededError,
             parse_action_file,
             reschedule_action,
+            resolve_action_path,
         )
 
         canonical_due = self._normalize_due(new_due)
@@ -441,7 +443,10 @@ class VaultTools:
                 }
             )
 
-        action_path = self.vault_path / "actions" / f"{slug}.md"
+        try:
+            action_path = resolve_action_path(self.vault_path, slug)
+        except ValueError as e:
+            return json.dumps({"error": str(e)})
         if not action_path.exists():
             return json.dumps({"error": f"Action not found: {slug}"})
         parsed = parse_action_file(action_path)
@@ -728,6 +733,12 @@ def create_mcp_server(vault_path: Path):
     return server
 
 
+MIN_BEARER_TOKEN_LENGTH = 32
+# RFC 6750 b64token: ASCII letters, digits and -._~+/ with optional trailing "=".
+# deploy/deploy.sh applies the same rule to deploy/.env.
+_BEARER_TOKEN_RE = re.compile(r"[A-Za-z0-9._~+/-]{%d,}=*" % MIN_BEARER_TOKEN_LENGTH)
+
+
 def _make_bearer_middleware(expected_token: str):
     """Create a Starlette ASGI middleware that verifies Bearer tokens.
 
@@ -766,10 +777,17 @@ def apply_bearer_auth(server) -> bool:
     streamable_http_app method to inject authentication middleware.
 
     Returns True if auth was applied, False otherwise.
+    Raises ValueError unless the token is an RFC 6750 bearer token of at least
+    MIN_BEARER_TOKEN_LENGTH characters, which also rejects the example placeholder.
     """
     token = os.environ.get("MCP_BEARER_TOKEN", "").strip()
     if not token:
         return False
+    if not _BEARER_TOKEN_RE.fullmatch(token):
+        raise ValueError(
+            f"MCP_BEARER_TOKEN must be at least {MIN_BEARER_TOKEN_LENGTH} characters of "
+            "ASCII letters, digits and -._~+/ (RFC 6750). Generate one: openssl rand -hex 32"
+        )
 
     original_app_fn = server.streamable_http_app
 

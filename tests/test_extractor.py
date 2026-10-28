@@ -195,7 +195,9 @@ class TestParseDateRu:
 class TestMatchPatterns:
     def test_pattern1(self):
         """Matches '- [ ] @owner -- desc -- by date'."""
-        result = _match_patterns("- [ ] @alex \u2014 Prepare vendor security review \u2014 by 2026-03-25")
+        result = _match_patterns(
+            "- [ ] @alex \u2014 Prepare vendor security review \u2014 by 2026-03-25"
+        )
         assert result is not None
         assert result["owner"] == "alex"
         assert "security" in result["desc"].lower()

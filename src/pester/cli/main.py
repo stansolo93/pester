@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 
 import click
@@ -12,6 +13,44 @@ from pester.core.config import ConfigError
 from pester.core.vault import VaultNotFoundError, find_vault_root
 
 logger = logging.getLogger("pester")
+
+# Telegram bot tokens ("<bot id>:<secret>") sit inside Bot API URLs, which HTTP
+# client libraries put into log messages and exception texts.
+_TELEGRAM_TOKEN_RE = re.compile(r"(?<!\d)\d{6,12}:[A-Za-z0-9_-]{30,}")
+
+
+def _redact(text: str) -> str:
+    return _TELEGRAM_TOKEN_RE.sub("<redacted>", text)
+
+
+class _RedactSecretsFilter(logging.Filter):
+    """Handler filter that strips Telegram bot tokens from messages and tracebacks."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        redacted = _redact(message)
+        if redacted != message:
+            record.msg = redacted
+            record.args = None
+        if record.exc_info and not record.exc_text:
+            record.exc_text = logging.Formatter().formatException(record.exc_info)
+        if record.exc_text:
+            record.exc_text = _redact(record.exc_text)
+        return True
+
+
+def _configure_logging(level: int) -> None:
+    logging.basicConfig(
+        level=level,
+        format="%(levelname)s: %(message)s",
+        stream=sys.stderr,
+    )
+    # httpx logs every request URL at INFO, and the Telegram Bot API URL carries the token.
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+    for handler in logging.getLogger().handlers:
+        if not any(isinstance(f, _RedactSecretsFilter) for f in handler.filters):
+            handler.addFilter(_RedactSecretsFilter())
 
 
 class ICEOGroup(click.Group):
@@ -58,11 +97,7 @@ def cli(ctx: click.Context, vault: str | None, verbose: bool, quiet: bool) -> No
     """
     # Configure logging
     level = logging.DEBUG if verbose else (logging.WARNING if quiet else logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format="%(levelname)s: %(message)s",
-        stream=sys.stderr,
-    )
+    _configure_logging(level)
 
     ctx.ensure_object(dict)
     if vault is not None:

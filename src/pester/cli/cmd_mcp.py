@@ -46,7 +46,11 @@ def mcp(ctx: click.Context, transport: str, host: str, port: int) -> None:
     server = create_mcp_server(vault_path)
 
     if transport == "streamable-http":
-        auth_applied = apply_bearer_auth(server)
+        try:
+            auth_applied = apply_bearer_auth(server)
+        except ValueError as exc:
+            click.echo(f"Error: {exc}", err=True)
+            raise SystemExit(1)
         if host != "127.0.0.1" and not auth_applied:
             click.echo(
                 "Error: Refusing to expose MCP on non-localhost without auth. "

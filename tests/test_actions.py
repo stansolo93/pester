@@ -16,6 +16,7 @@ from pester.tracking.actions import (
     list_actions,
     parse_action_file,
     reschedule_action,
+    resolve_action_path,
 )
 
 # ── Pre-existing fixture files in tmp_vault ─────────────────────────────────
@@ -241,6 +242,45 @@ class TestCompleteAction:
             complete_action(tmp_vault, "stan-test-action")
             mock_log.assert_called_once()
             assert mock_log.call_args[0][1] == "action_done"
+
+
+class TestResolveActionPath:
+    @pytest.mark.parametrize(
+        "slug",
+        ["", ".", "..", "../people/alex", "../../outside", ".hidden", "a/b", "a\\b", "a\0b"],
+    )
+    def test_rejects_slugs_outside_actions(self, tmp_vault: Path, slug: str):
+        with pytest.raises(ValueError, match="Invalid action slug"):
+            resolve_action_path(tmp_vault, slug)
+
+    def test_accepts_plain_slug(self, tmp_vault: Path):
+        path = resolve_action_path(tmp_vault, "stan-test-action")
+        assert path == tmp_vault / "actions" / "stan-test-action.md"
+
+    def test_rejects_symlink_leaving_actions(self, tmp_vault: Path, tmp_path: Path):
+        outside = tmp_path / "outside.md"
+        outside.write_text("---\nowner: stan\nstatus: open\n---\n", encoding="utf-8")
+        (tmp_vault / "actions" / "linked.md").symlink_to(outside)
+        with pytest.raises(ValueError, match="Invalid action slug"):
+            resolve_action_path(tmp_vault, "linked")
+
+    def test_complete_refuses_traversal(self, tmp_vault: Path):
+        target = tmp_vault / "people" / "victim.md"
+        target.parent.mkdir(exist_ok=True)
+        original = "---\nowner: stan\nstatus: open\ndue: 2099-01-01\n---\n\n# Person\n"
+        target.write_text(original, encoding="utf-8")
+        with pytest.raises(ValueError, match="Invalid action slug"):
+            complete_action(tmp_vault, "../people/victim")
+        assert target.read_text(encoding="utf-8") == original
+
+    def test_reschedule_refuses_traversal(self, tmp_vault: Path):
+        target = tmp_vault / "people" / "victim.md"
+        target.parent.mkdir(exist_ok=True)
+        original = "---\nowner: stan\nstatus: open\ndue: 2099-01-01\n---\n\n# Person\n"
+        target.write_text(original, encoding="utf-8")
+        with pytest.raises(ValueError, match="Invalid action slug"):
+            reschedule_action(tmp_vault, "../people/victim", "2099-02-01")
+        assert target.read_text(encoding="utf-8") == original
 
 
 class TestParseActionFile:

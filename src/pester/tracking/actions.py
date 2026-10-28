@@ -175,13 +175,34 @@ def create_action(
     return slug
 
 
+def resolve_action_path(vault_path: Path, slug: str) -> Path:
+    """Return actions/<slug>.md, refusing any slug that would resolve outside actions/.
+
+    Slugs arrive from the CLI, MCP clients and LLM tool calls, so they are untrusted.
+    Raises ValueError for an empty slug, a path separator, a leading dot, or a path
+    (symlinks included) that resolves outside actions/.
+    """
+    if (
+        not isinstance(slug, str)
+        or not slug
+        or slug.startswith(".")
+        or any(ch in slug for ch in ("/", "\\", "\0"))
+    ):
+        raise ValueError(f"Invalid action slug: {slug!r}")
+    actions_dir = vault_path / "actions"
+    action_path = actions_dir / f"{slug}.md"
+    if action_path.resolve().parent != actions_dir.resolve():
+        raise ValueError(f"Invalid action slug: {slug!r}")
+    return action_path
+
+
 def complete_action(vault_path: Path, slug: str) -> None:
     """Mark an action as done. Updates frontmatter and logs to audit.
 
     Raises FileNotFoundError if slug not found.
-    Raises ValueError if already done.
+    Raises ValueError if already done or the slug is invalid.
     """
-    action_path = vault_path / "actions" / f"{slug}.md"
+    action_path = resolve_action_path(vault_path, slug)
     if not action_path.exists():
         raise FileNotFoundError(f"Action not found: {slug}")
 
@@ -288,8 +309,9 @@ def reschedule_action(vault_path: Path, slug: str, new_due: str) -> int:
 
     Returns the new postponed_count.
     Raises FileNotFoundError if slug not found.
+    Raises ValueError if the slug is invalid.
     """
-    action_path = vault_path / "actions" / f"{slug}.md"
+    action_path = resolve_action_path(vault_path, slug)
     if not action_path.exists():
         raise FileNotFoundError(f"Action not found: {slug}")
 

@@ -55,6 +55,11 @@ build-backend = "hatchling.build"
 path = "VERSION"
 pattern = "(?P<version>.+)"
 
+# The sdist carries the package source and metadata only: no tests, fixtures,
+# deploy files or repository tooling.
+[tool.hatch.build.targets.sdist]
+only-include = ["src", "pyproject.toml", "README.md", "LICENSE", "CHANGELOG.md", "VERSION"]
+
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

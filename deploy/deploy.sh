@@ -21,11 +21,21 @@ fi
 # Caddy's bearer-token matcher would accept Bearer "" if MCP_BEARER_TOKEN
 # expands empty. The MCP container itself refuses to start without a token,
 # but we fail-fast here so a misconfigured deploy never reaches the VPS.
-if ! grep -qE '^MCP_BEARER_TOKEN=.{20,}' "$REPO_ROOT/deploy/.env"; then
-    echo "ERROR: MCP_BEARER_TOKEN missing or shorter than 20 chars in deploy/.env"
+# Same rule as `pester mcp` at startup: the parsed value (surrounding quotes and
+# whitespace removed) must be 32+ chars of ASCII letters, digits and -._~+/ (RFC 6750).
+MCP_TOKEN="$(sed -n 's/^MCP_BEARER_TOKEN=//p' "$REPO_ROOT/deploy/.env" | tail -n 1)"
+MCP_TOKEN="${MCP_TOKEN#"${MCP_TOKEN%%[![:space:]]*}"}"
+MCP_TOKEN="${MCP_TOKEN%"${MCP_TOKEN##*[![:space:]]}"}"
+if [[ "$MCP_TOKEN" == \"*\" || "$MCP_TOKEN" == \'*\' ]]; then
+    MCP_TOKEN="${MCP_TOKEN:1:${#MCP_TOKEN}-2}"
+fi
+if ! LC_ALL=C grep -qE '^[A-Za-z0-9._~+/-]{32,}=*$' <<< "$MCP_TOKEN"; then
+    echo "ERROR: MCP_BEARER_TOKEN in deploy/.env is missing, shorter than 32 chars,"
+    echo "  or has characters outside A-Z a-z 0-9 -._~+/"
     echo "  Generate one: openssl rand -hex 32"
     exit 1
 fi
+unset MCP_TOKEN
 # If MCP_DOMAIN is empty, Caddyfile falls back to mcp.example.com and Let's
 # Encrypt tries to provision a cert for a domain you do not control, silently
 # breaking HTTPS with no clear error. Fail fast instead.

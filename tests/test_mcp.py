@@ -584,6 +584,62 @@ class TestVaultToolsReschedule:
         result = json.loads(tools.vault_reschedule("stan-test-action", "not-a-date"))
         assert "error" in result
 
+    def test_reschedule_refuses_traversal(self, tmp_vault: Path):
+        target = tmp_vault / "people" / "victim.md"
+        target.parent.mkdir(exist_ok=True)
+        original = "---\nowner: stan\nstatus: open\ndue: 2099-01-01\npriority: Should\n---\n"
+        target.write_text(original, encoding="utf-8")
+        tools = self._make_tools(tmp_vault)
+        result = json.loads(tools.vault_reschedule("../people/victim", "2099-02-01"))
+        assert "Invalid action slug" in result["error"]
+        assert target.read_text(encoding="utf-8") == original
+
+    def test_reschedule_traversal_reveals_nothing(self, tmp_vault: Path):
+        """Outside paths are refused before any lookup, so existence does not leak."""
+        tools = self._make_tools(tmp_vault)
+        result = json.loads(tools.vault_reschedule("../no-such-file", "2099-02-01"))
+        assert "Invalid action slug" in result["error"]
+
+    def test_complete_refuses_traversal(self, tmp_vault: Path):
+        target = tmp_vault / "people" / "victim.md"
+        target.parent.mkdir(exist_ok=True)
+        original = "---\nowner: stan\nstatus: open\ndue: 2099-01-01\n---\n"
+        target.write_text(original, encoding="utf-8")
+        tools = self._make_tools(tmp_vault)
+        result = json.loads(tools.vault_complete_action(slug="../people/victim"))
+        assert result["completed"] is False
+        assert "Invalid action slug" in result["error"]
+        assert target.read_text(encoding="utf-8") == original
+
+
+class TestApplyBearerAuth:
+    """Token strength check in apply_bearer_auth (no mcp package needed)."""
+
+    def test_no_token_means_no_auth(self, monkeypatch):
+        from pester.mcp.server import apply_bearer_auth
+
+        monkeypatch.delenv("MCP_BEARER_TOKEN", raising=False)
+        assert apply_bearer_auth(MagicMock()) is False
+
+    @pytest.mark.parametrize(
+        "token",
+        ["your-secret-token-here", "a" * 31, "é" * 32, "a" * 31 + " b", '"' + "a" * 31 + '"'],
+    )
+    def test_weak_or_malformed_token_refused(self, monkeypatch, token):
+        """Too short, non-ASCII (hmac.compare_digest would raise per request) or quoted."""
+        from pester.mcp.server import apply_bearer_auth
+
+        monkeypatch.setenv("MCP_BEARER_TOKEN", token)
+        with pytest.raises(ValueError, match="at least 32 characters"):
+            apply_bearer_auth(MagicMock())
+
+    @pytest.mark.parametrize("token", ["0123456789abcdef" * 4, "a" * 32, "Ab+/" * 8 + "=="])
+    def test_valid_token_applied(self, monkeypatch, token):
+        from pester.mcp.server import apply_bearer_auth
+
+        monkeypatch.setenv("MCP_BEARER_TOKEN", token)
+        assert apply_bearer_auth(MagicMock()) is True
+
 
 class TestVaultToolsBriefing:
     """Tests for VaultTools.vault_briefing."""
@@ -774,6 +830,28 @@ class TestMCPCLI:
         # Must refuse to start without auth on non-localhost
         assert result.exit_code == 1
         assert "Refusing to expose MCP" in result.output
+
+    @patch("pester.cli.cmd_mcp.require_mcp")
+    def test_mcp_placeholder_token_refuses(self, mock_require, tmp_vault: Path, monkeypatch):
+        """The example placeholder token never starts the HTTP server."""
+        from click.testing import CliRunner
+
+        from pester.cli.cmd_mcp import mcp
+
+        monkeypatch.setenv("MCP_BEARER_TOKEN", "your-secret-token-here")
+        runner = CliRunner()
+        with patch("pester.mcp.server.create_mcp_server") as mock_create:
+            mock_server = MagicMock()
+            mock_create.return_value = mock_server
+            result = runner.invoke(
+                mcp,
+                ["--transport", "streamable-http", "--host", "0.0.0.0", "--port", "9999"],
+                obj={"vault_override": str(tmp_vault)},
+                catch_exceptions=True,
+            )
+        assert result.exit_code == 1
+        assert "at least 32 characters" in result.output
+        mock_server.run.assert_not_called()
 
 
 # ── MCP audit logging tests ──────────────────────────────────────

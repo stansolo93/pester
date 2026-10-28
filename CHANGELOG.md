@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Security
+
+- Telegram bot tokens no longer reach logs: `httpx` and `httpcore` log at WARNING and above, and a log filter redacts bot tokens from messages and tracebacks.
+- `MCP_BEARER_TOKEN` must be an RFC 6750 bearer token of at least 32 characters (ASCII letters, digits and `-._~+/`); `pester mcp` refuses to start otherwise, including with the old example placeholder. The example env files ship an empty token, and `deploy/deploy.sh` applies the same rule to the parsed value.
+- Action slugs from the CLI, MCP tools and bot tools can no longer point outside `actions/` (path separators, leading dots and symlinks that leave the folder are refused).
+- The sdist contains only the package source and project metadata.
+- The repository secret scan walks directories passed to it and reports only file, line and kind of each finding, never the line itself.
+
 ### Changed
 
 - The `mcp` extra now requires `mcp>=1.30.0,<2`: mcp 2.x renamed `FastMCP`, and 1.30.0 carries security fixes.
