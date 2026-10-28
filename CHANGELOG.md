@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/)
 
+## [1.0.2] - 2026-10-28
+
+### Changed
+
+- Test fixtures, documentation examples and bot help text now use fictional names, tasks and figures.
+
 ## [1.0.0] - 2026-04-17
 
 Initial public release.
