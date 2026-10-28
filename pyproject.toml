@@ -35,7 +35,7 @@ search = [
     "tokenizers>=0.15.0",
     "numpy>=1.26",
 ]
-mcp = ["mcp>=1.0.0"]
+mcp = ["mcp>=1.30.0,<2"]
 drive = ["google-api-python-client", "google-auth-oauthlib"]
 telegram = ["python-telegram-bot>=20.0", "pymupdf>=1.23"]
 daemon = ["watchdog>=3.0", "schedule>=1.2", "requests>=2.28"]

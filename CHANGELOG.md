@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/)
 
+## [Unreleased]
+
+### Changed
+
+- The `mcp` extra now requires `mcp>=1.30.0,<2`: mcp 2.x renamed `FastMCP`, and 1.30.0 carries security fixes.
+- Development lockfile refreshed for published security advisories (aiohttp, anyio, certifi, cryptography, filelock, mcp, multidict, oauthlib, opentelemetry, pyjwt, urllib3).
+
 ## [1.0.2] - 2026-10-28
 
 ### Changed
