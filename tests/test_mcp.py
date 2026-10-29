@@ -641,6 +641,70 @@ class TestApplyBearerAuth:
         assert apply_bearer_auth(MagicMock()) is True
 
 
+@pytest.mark.mcp
+class TestBearerMiddleware:
+    """Request side: a bad Authorization header is a 401, never an exception."""
+
+    def _call(self, header: bytes | None) -> tuple[int | None, bool]:
+        pytest.importorskip("starlette")
+        import asyncio
+
+        from pester.mcp.server import _make_bearer_middleware
+
+        reached: list[bool] = []
+        sent: list[dict] = []
+
+        async def app(scope, receive, send):
+            reached.append(True)
+
+        async def receive():
+            return {"type": "http.request", "body": b""}
+
+        async def send(message):
+            sent.append(message)
+
+        middleware = _make_bearer_middleware("a" * 32).cls(app)
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/mcp",
+            "query_string": b"",
+            "headers": [] if header is None else [(b"authorization", header)],
+        }
+        asyncio.run(middleware(scope, receive, send))
+        status = next((m["status"] for m in sent if m["type"] == "http.response.start"), None)
+        return status, bool(reached)
+
+    @pytest.mark.parametrize(
+        "header",
+        [
+            b"Bearer \xff",
+            b"Bearer " + b"a" * 31 + b"\xe9",
+            b"Bearer " + "é".encode() * 32,
+            b"Bearer wrong",
+            b"Basic " + b"a" * 32,
+            b"Token  " + b"a" * 32,
+            b"bearer " + b"a" * 32,
+            None,
+        ],
+        ids=[
+            "latin-1 byte",
+            "valid prefix + non-ASCII",
+            "utf-8",
+            "wrong",
+            "basic",
+            "other scheme, same length",
+            "lowercase scheme",
+            "missing",
+        ],
+    )
+    def test_bad_request_token_is_401(self, header):
+        assert self._call(header) == (401, False)
+
+    def test_expected_token_reaches_the_app(self):
+        assert self._call(b"Bearer " + b"a" * 32) == (None, True)
+
+
 class TestVaultToolsBriefing:
     """Tests for VaultTools.vault_briefing."""
 

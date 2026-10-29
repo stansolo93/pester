@@ -8,7 +8,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 ### Security
 
 - Telegram bot tokens no longer reach logs: `httpx` and `httpcore` log at WARNING and above, and a log filter redacts bot tokens from messages and tracebacks.
-- `MCP_BEARER_TOKEN` must be an RFC 6750 bearer token of at least 32 characters (ASCII letters, digits and `-._~+/`); `pester mcp` refuses to start otherwise, including with the old example placeholder. The example env files ship an empty token, and `deploy/deploy.sh` applies the same rule to the parsed value.
+- `MCP_BEARER_TOKEN` must be an RFC 6750 bearer token of at least 32 characters (ASCII letters, digits and `-._~+/`); `pester mcp` refuses to start otherwise, including with the old example placeholder. The example env files ship an empty token, and `deploy/deploy.sh` applies the same rule to the value Docker Compose reads from `deploy/.env` (`deploy/check_env.py` parses comments, quotes, `export`, spacing, repeated keys and `$` templates the way Compose does, refuses templates Compose would stop on, and prints no value).
+- The MCP bearer-token check answers 401 to a malformed or non-ASCII request token instead of raising an exception.
 - Action slugs from the CLI, MCP tools and bot tools can no longer point outside `actions/` (path separators, leading dots and symlinks that leave the folder are refused).
 - The sdist contains only the package source and project metadata.
 - The repository secret scan walks directories passed to it and reports only file, line and kind of each finding, never the line itself.

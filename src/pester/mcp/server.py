@@ -759,8 +759,11 @@ def _make_bearer_middleware(expected_token: str):
             if scope["type"] == "http":
                 request = Request(scope, receive)
                 auth_header = request.headers.get("authorization", "")
-                if not auth_header.startswith("Bearer ") or not hmac.compare_digest(
-                    auth_header[7:], expected_token
+                token = auth_header[7:] if auth_header.startswith("Bearer ") else ""
+                # A token outside the RFC 6750 grammar (non-ASCII included, which
+                # hmac.compare_digest would raise on) cannot match: 401 before comparing.
+                if not _BEARER_TOKEN_RE.fullmatch(token) or not hmac.compare_digest(
+                    token, expected_token
                 ):
                     response = JSONResponse({"error": "Unauthorized"}, status_code=401)
                     await response(scope, receive, send)

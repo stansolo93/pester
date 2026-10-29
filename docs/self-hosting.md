@@ -60,8 +60,10 @@ PESTER_VAULT=/vault             # Vault path inside container (default: /vault)
 
 **MCP_DOMAIN must be a real domain you control** with an A-record pointing to the VPS.
 Without it, Caddy will try to provision a Let's Encrypt certificate for the Caddyfile
-fallback `mcp.example.com` and HTTPS will silently break. `deploy.sh` now fails fast
-if either `MCP_DOMAIN` or `MCP_BEARER_TOKEN` is missing.
+fallback `mcp.example.com` and HTTPS will silently break. `deploy.sh` reads `deploy/.env`
+the way Docker Compose does (`deploy/check_env.py`) and fails fast if `MCP_DOMAIN` is missing
+or `MCP_BEARER_TOKEN` is not 32+ characters of ASCII letters, digits and `-._~+/`. It never
+prints either value.
 
 ## Server Setup
 

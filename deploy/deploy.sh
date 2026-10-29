@@ -18,33 +18,15 @@ if [ ! -f "$REPO_ROOT/deploy/.env" ]; then
     echo "  # Fill in your API keys, then re-run deploy.sh"
     exit 1
 fi
-# Caddy's bearer-token matcher would accept Bearer "" if MCP_BEARER_TOKEN
-# expands empty. The MCP container itself refuses to start without a token,
-# but we fail-fast here so a misconfigured deploy never reaches the VPS.
-# Same rule as `pester mcp` at startup: the parsed value (surrounding quotes and
-# whitespace removed) must be 32+ chars of ASCII letters, digits and -._~+/ (RFC 6750).
-MCP_TOKEN="$(sed -n 's/^MCP_BEARER_TOKEN=//p' "$REPO_ROOT/deploy/.env" | tail -n 1)"
-MCP_TOKEN="${MCP_TOKEN#"${MCP_TOKEN%%[![:space:]]*}"}"
-MCP_TOKEN="${MCP_TOKEN%"${MCP_TOKEN##*[![:space:]]}"}"
-if [[ "$MCP_TOKEN" == \"*\" || "$MCP_TOKEN" == \'*\' ]]; then
-    MCP_TOKEN="${MCP_TOKEN:1:${#MCP_TOKEN}-2}"
-fi
-if ! LC_ALL=C grep -qE '^[A-Za-z0-9._~+/-]{32,}=*$' <<< "$MCP_TOKEN"; then
-    echo "ERROR: MCP_BEARER_TOKEN in deploy/.env is missing, shorter than 32 chars,"
-    echo "  or has characters outside A-Z a-z 0-9 -._~+/"
-    echo "  Generate one: openssl rand -hex 32"
-    exit 1
-fi
-unset MCP_TOKEN
-# If MCP_DOMAIN is empty, Caddyfile falls back to mcp.example.com and Let's
-# Encrypt tries to provision a cert for a domain you do not control, silently
-# breaking HTTPS with no clear error. Fail fast instead.
-if ! grep -qE '^MCP_DOMAIN=[^[:space:]]+' "$REPO_ROOT/deploy/.env"; then
-    echo "ERROR: MCP_DOMAIN missing or empty in deploy/.env"
-    echo "  This must be a domain you control with an A-record pointing to the VPS."
-    echo "  Without it, Caddy uses 'mcp.example.com' and TLS provisioning will fail."
-    exit 1
-fi
+# deploy/check_env.py reads deploy/.env the way Docker Compose does (comments, quotes,
+# `export`, spaces around `=`, the last assignment wins) and prints no values. It stops
+# the deploy before anything reaches the VPS unless:
+# - MCP_BEARER_TOKEN is what `pester mcp` accepts at startup: 32+ chars of ASCII letters,
+#   digits and -._~+/ (RFC 6750). Caddy's bearer matcher would accept `Bearer ""` if
+#   the token expanded empty.
+# - MCP_DOMAIN is set. Empty, Caddy falls back to mcp.example.com and Let's Encrypt
+#   tries to provision a cert for a domain you do not control.
+python3 "$REPO_ROOT/deploy/check_env.py" "$REPO_ROOT/deploy/.env"
 
 echo "=== [1/7] Checking SSH connection ==="
 ssh -i "$SSH_KEY" -o ConnectTimeout=5 "$REMOTE" "echo 'Connected'" || {
