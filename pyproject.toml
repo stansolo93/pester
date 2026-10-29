@@ -42,7 +42,7 @@ daemon = ["watchdog>=3.0", "schedule>=1.2", "requests>=2.28"]
 bot = ["python-telegram-bot>=20.0", "openai>=1.0", "anthropic>=0.30.0", "groq>=0.4.0"]
 llm = ["openai>=1.0", "anthropic>=0.30.0"]
 all = ["pester[search,mcp,drive,telegram,daemon,llm,bot]"]
-dev = ["pytest", "pytest-cov", "ruff", "build"]
+dev = ["pytest", "pytest-cov", "ruff==0.15.21", "build"]
 
 [project.scripts]
 pester = "pester.cli.main:cli"
